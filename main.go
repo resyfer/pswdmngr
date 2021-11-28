@@ -24,7 +24,7 @@ func main() {
 	clear()
 	fmt.Printf("Welcome to Resyfer's Password Manager v%v\n", VERSION)
 
-	// Opening file or Creating it
+	// Checking file or Creating it
 	var fileExists bool = true
 	_, errStat := os.Stat("password.txt")
 	if errStat != nil {
@@ -43,10 +43,10 @@ func main() {
 
 	// Secret
 	var secret string = ""
+	
+	// Getting Secret Code and if present, verifying it
 	var attemptLimit int = 5
 	var attempts int = 0
-
-	// Getting Secret Code
 	if fileExists {
 		survey.AskOne(&survey.Password{
 			Message: "Please enter your secret code > ",
@@ -93,11 +93,5 @@ func main() {
 		fmt.Println("Too many tries mate, we know you ain't the Chosen One ヽ( `д´*)ノ")
 		os.Exit(0)
 	}
-
-
-	// //Clear Login
-	// loginClear := exec.Command("clear")
-	// loginClear.Stdout = os.Stdout
-	// loginClear.Run()
 
 }

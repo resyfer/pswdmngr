@@ -1,5 +1,10 @@
 package main
 
+/*
+	Written by Resyfer
+	https://github.com/resyfer/pswdmngr/blob/main/crypt.go
+*/
+
 import (
 	"crypto/aes"
 	"crypto/cipher"
@@ -9,7 +14,15 @@ import (
 	"io"
 )
 
-func TrimIndex(text []byte) int {
+/**
+
+	3 Hours of Pain and Suffering later, finally I completed coding these
+	functions to meet my needs
+
+**/
+
+
+func trimIndex(text []byte) int {
 	for i:=0; i<len(text); i++ {
 		if text[i] == 0 {
 			return i
@@ -19,6 +32,8 @@ func TrimIndex(text []byte) int {
 	return len(text)
 }
 
+
+//Encrypt(String, Key) gives the gibberish string and an error
 func Encrypt(payload, secret string) (cipherString string, err error) {
 	var key [32]byte;
 	copy(key[:], []byte(secret))
@@ -28,7 +43,7 @@ func Encrypt(payload, secret string) (cipherString string, err error) {
 		return "", err
 	}
 	
-  gcm, err := cipher.NewGCM(cipherText)
+	gcm, err := cipher.NewGCM(cipherText)
 	if err != nil {
 		return "", err
 	}
@@ -39,9 +54,10 @@ func Encrypt(payload, secret string) (cipherString string, err error) {
 	}
 
 	text := gcm.Seal(nonce, nonce, []byte(payload), nil)
-	return string(text[:TrimIndex(text)]), nil
+	return string(text[:trimIndex(text)]), nil
 }
 
+// Decrypt(gibberishString, key) gives back original string and error
 func Decrypt(cipherString, secret string) (payload string , err error) {
 	var key [32]byte;
 	copy(key[:], []byte(secret))
@@ -69,5 +85,5 @@ func Decrypt(cipherString, secret string) (payload string , err error) {
 		return "", fmt.Errorf("bad")
 	}
 	
-	return string(plaintext[:TrimIndex(plaintext)]), nil
+	return string(plaintext[:trimIndex(plaintext)]), nil
 }
