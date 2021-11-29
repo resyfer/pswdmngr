@@ -198,6 +198,9 @@ func main() {
 	clear()
 	color.Yellow("Welcome to Resyfer's Password Manager v%v\n", VERSION)
 	color.Red("NOTE: Only use the Quit option to exit the program, or changes won't be saved")
+	fmt.Printf("\n")
+	color.Magenta("Disclaimer : The file %v is where your passwords are stored. It is secure enough not to be decryptable without the secret code, even by the developers.\n\n", FILE_NAME)
+	color.Magenta("Every data is stored only on your PC in your %v file. Don't forget your secret code, and don't lose the file (placing another file with the same name can work as import/export of passwords) else it is irrecoverable. For recovering guarantee, always keep a copy of %v in Cloud Storage.", FILE_NAME, FILE_NAME)
 	fmt.Printf("\n\n")
 
 	// Checking file or Creating it
