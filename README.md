@@ -6,6 +6,9 @@ A lightweight Secure CLI Password Manager using Go
 
 NOTE: The binaries are only for x86, 64bit devices. For others, please compile from source
 
+The required binaries can be installed directly from the releases tab: `pswdmngr` for Linux, `pswdmngr.exe` for Windows.
+
+Alternative, <br/>
 Get the required files
 ```
 git clone https://github.com/resyfer/pswdmngr
