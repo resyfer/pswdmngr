@@ -1,5 +1,3 @@
 # pswdmngr
 
-A password manager using Go
-
-NOTE: Still Work In Progress
+A lightweight Secure CLI Password Manager using Go
