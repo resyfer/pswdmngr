@@ -1,12 +1,12 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"log"
 	"math/rand"
 	"os"
 	"os/exec"
-	"strings"
 	"time"
 
 	"github.com/dlclark/regexp2" //Internal Go Regexp doesn't support backtracking in exchange for constant times
@@ -19,7 +19,8 @@ import (
 const VERSION string = "1.0.0"
 const FILE_NAME string = "password.txt"
 
-// Global Variables
+// Global Variables	
+var secret string = ""
 var ValidPassword *regexp2.Regexp
 var data map[string]string = map[string]string{}
 
@@ -27,6 +28,42 @@ func clear() {
 	c := exec.Command("clear")
 	c.Stdout = os.Stdout
 	c.Run()
+}
+
+func save() {
+
+	var saveString string = ""
+
+	encrSecret, _ := Encrypt(secret, secret)
+	saveString += encrSecret
+
+	for elem, val := range data {
+
+		if elem == "secret" {
+			continue
+		}
+
+		encrElem, _ := Encrypt(elem, secret)
+		encrVal, _ := Encrypt(val, secret)
+		saveString += "\n" + encrElem + " " + encrVal
+
+	}
+	
+	os.WriteFile(FILE_NAME, []byte(saveString), 0644)
+
+}
+
+func retrieve(fileBytes [][]byte) {
+
+	for i:=1; i < len(fileBytes); i++ {
+	
+		site := bytes.Split(fileBytes[i], []byte(" "))
+		decrElem, _ := Decrypt(string(site[0]), secret)
+		decrVal, _ := Decrypt(string(site[1]), secret)
+
+		data[decrElem] = decrVal
+	}
+
 }
 
 func options() {
@@ -78,7 +115,7 @@ func options() {
 		newPassword := ""
 	
 		survey.AskOne(&survey.Input{
-			Message: "Name for New Site (Atleast 4 characters long)",
+			Message: "Name for New Site (Atleast 4 characters long, Q to quit)",
 		}, &name, survey.WithValidator(
 			func () survey.Validator {
 				return func (val interface{}) error {
@@ -162,7 +199,7 @@ func options() {
 
 		// New Name question
 		survey.AskOne(&survey.Input{
-			Message: "New Name for Site (Atleast 4 characters long)",
+			Message: "New Name for Site (Atleast 4 characters long, Q for quit)",
 		}, &new, survey.WithValidator(
 			func () survey.Validator {
 				return func (val interface{}) error {
@@ -247,6 +284,7 @@ func options() {
 		changePassword(siteName, newPassword)
 
 	case "Quit":
+		save()
 		quit()
 	}
 	fmt.Printf("\n\n")
@@ -339,10 +377,7 @@ func main() {
 
 	// Secret Code if it exists
 	fileByteContent, _ := os.ReadFile(FILE_NAME)
-	fileStringContent := strings.Split(string(fileByteContent), "\n")
-	
-	// Secret
-	var secret string = ""
+	fileByteArray := bytes.Split(fileByteContent, []byte("\n"))
 	
 	// Getting Secret Code and if present, verifying it
 	var attemptLimit int = 5
@@ -358,7 +393,7 @@ func main() {
 				return func (val interface{}) error {
 					
 					clientSecret, _ := val.(string)
-					decoded, _ := Decrypt(fileStringContent[0], clientSecret)
+					decoded, _ := Decrypt(string(fileByteArray[0]), clientSecret)
 
 					if attempts <= attemptLimit && decoded == clientSecret {
 						data["secret"] = decoded
@@ -372,6 +407,8 @@ func main() {
 
 				}
 			}()))
+
+			retrieve(fileByteArray)
 	} else {
 		survey.AskOne(&survey.Password{
 			Message: "Please enter a secret code",

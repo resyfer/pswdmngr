@@ -32,6 +32,15 @@ func trimIndex(text []byte) int {
 	return len(text)
 }
 
+func checkNewLine(text []byte) bool {
+
+	for i:=0; i<len(text); i++ {
+		if text[i] == byte(10) || text[i] == byte(32) {
+			return true
+		}
+	}
+	return false
+}
 
 // Encrypt(String, Key) gives the gibberish string and an error.
 // Make sure Key is smaller than 32 bytes (len(Key) <= 32)
@@ -39,23 +48,30 @@ func Encrypt(payload, secret string) (cipherString string, err error) {
 	var key [32]byte;
 	copy(key[:], []byte(secret))
 
-	cipherText, err := aes.NewCipher(key[:])
-	if err != nil {
-		return "", err
-	}
+	encryptedByteString := []byte{10}
+	for checkNewLine(encryptedByteString) {
+
+		cipherText, err := aes.NewCipher(key[:])
+		if err != nil {
+			return "", err
+		}
+		
+		gcm, err := cipher.NewGCM(cipherText)
+		if err != nil {
+			return "", err
+		}
 	
-	gcm, err := cipher.NewGCM(cipherText)
-	if err != nil {
-		return "", err
+		nonce := make([]byte, gcm.NonceSize())
+		if _, err = io.ReadFull(rand.Reader, nonce); err != nil {
+			return "", err
+		}
+	
+		text := gcm.Seal(nonce, nonce, []byte(payload), nil)
+		
+		encryptedByteString = text[:trimIndex(text)]
 	}
 
-	nonce := make([]byte, gcm.NonceSize())
-	if _, err = io.ReadFull(rand.Reader, nonce); err != nil {
-		return "", err
-	}
-
-	text := gcm.Seal(nonce, nonce, []byte(payload), nil)
-	return string(text[:trimIndex(text)]), nil
+	return string(encryptedByteString), nil
 }
 
 // Decrypt(encryptedString, key) gives back original string and error.
