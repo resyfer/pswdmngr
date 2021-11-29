@@ -35,7 +35,7 @@ The bin folder has the executable `pswdmngr.exe`. Copy to preferred location and
 
 
 ## Compiing From Source
-Pre-requirements: `Go 1.17 or higher`
+Pre-requirements: `Go 1.13 or higher`
 
 `cd` into project folder
 ```
