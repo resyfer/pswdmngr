@@ -2,6 +2,9 @@
 
 A lightweight Secure CLI Password Manager using Go
 
+![image](https://user-images.githubusercontent.com/74897008/143892576-cdeaa8a1-c37f-4a7a-9b96-561d33da6334.png)
+![image](https://user-images.githubusercontent.com/74897008/143892793-280abbd4-c783-4fc2-aa59-69669ceba057.png)
+
 ## Installation
 
 NOTE: The binaries are only for x86, 64bit devices. For others, please compile from source.
