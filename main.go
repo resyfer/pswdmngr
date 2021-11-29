@@ -133,6 +133,118 @@ func options() {
 
 		add(name, newPassword)
 
+	case "Change Name":
+
+		old := ""
+		new := ""
+
+		// Old Name question
+		survey.AskOne(&survey.Select{
+			Message: "Name of Site",
+			Options: func () []string {
+				names := []string{}
+				names = append(names, "QUIT")
+
+				for name := range data {
+					if name != "secret" {
+						names = append(names, name)
+					}
+				}
+
+				return names
+			}(),
+
+		}, &old)
+
+		if old == "QUIT" {
+			break
+		}
+
+		// New Name question
+		survey.AskOne(&survey.Input{
+			Message: "New Name for Site (Atleast 4 characters long)",
+		}, &new, survey.WithValidator(
+			func () survey.Validator {
+				return func (val interface{}) error {
+					newName := val.(string)
+
+					
+					if newName == "Q" {
+						return nil
+					}
+					
+					if len(newName) < 4 {
+						return fmt.Errorf("name should be atleast 4 characters long ლ(ಠ_ಠ ლ)")
+					}
+
+					_, ok := data[newName]
+
+					if !ok {
+						return nil
+					} else {
+						return fmt.Errorf("name already exists, please select a new one ლ(ಠ_ಠ ლ)")
+					}
+				}
+			}()))
+
+		if new == "Q" {
+			break
+		}
+		
+		changeName(old, new)
+
+	case "Change Password":
+		newPassword := ""
+		siteName := ""
+
+		// Old Name question
+		survey.AskOne(&survey.Select{
+			Message: "Name of Site",
+			Options: func () []string {
+				names := []string{}
+				names = append(names, "QUIT")
+
+				for name := range data {
+					if name != "secret" {
+						names = append(names, name)
+					}
+				}
+
+				return names
+			}(),
+
+		}, &siteName)
+
+		if siteName == "QUIT" {
+			break
+		}
+
+		//New Password
+		survey.AskOne(&survey.Password{
+			Message: "Enter Password for site (Enter Q to quit)",
+		}, &newPassword, survey.WithValidator(
+			func () survey.Validator {
+				return func (val interface{}) error {
+					pswd := val.(string)
+
+					if pswd == "Q" {
+						return nil
+					}
+
+					if len(pswd) < 8 {
+						return fmt.Errorf("a good password needs to be aleast 8 characters long |･д･)ﾉ")
+					}
+
+					// Didn't add password strength checker to allow password freedom
+					return nil
+				}
+			}()))
+
+		if newPassword == "Q" {
+			break
+		}
+
+		changePassword(siteName, newPassword)
 
 	case "Quit":
 		quit()
@@ -184,6 +296,15 @@ func add(name, password string) {
 
 }
 
+func changeName(oldName, newName string) {
+	data[newName] = data[oldName]
+	delete(data, oldName)
+}
+
+func changePassword(name, newPassword string) {
+	data[name] = newPassword
+}
+
 func quit() {
 	os.Exit(0)
 }
@@ -226,6 +347,8 @@ func main() {
 	// Getting Secret Code and if present, verifying it
 	var attemptLimit int = 5
 	var attempts int = 0
+
+	//TODO: Stop program on keyboard interrupts
 	if fileExists {
 		survey.AskOne(&survey.Password{
 			Message: "Please enter your secret code ",
@@ -269,6 +392,7 @@ func main() {
 			}()))
 		fmt.Println("Please remember this secret code ⊂(￣▽￣)⊃")
 	}
+
 	// Stop for too many attempts
 	if attempts > attemptLimit {
 		fmt.Println("Too many tries mate, we know you ain't the Chosen One ヽ( `д´*)ノ")
