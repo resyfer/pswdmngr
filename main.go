@@ -9,18 +9,19 @@ import (
 	"strings"
 	"time"
 
-	"github.com/dlclark/regexp2" //Internal Go Regex doesn't support backtracking in exchange for constant times
+	"github.com/dlclark/regexp2" //Internal Go Regexp doesn't support backtracking in exchange for constant times
 
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/fatih/color"
 )
 
-var VERSION string = "1.0.0"
-var FILE_NAME string = "password.txt"
+// Global Constants
+const VERSION string = "1.0.0"
+const FILE_NAME string = "password.txt"
 
+// Global Variables
 var ValidPassword *regexp2.Regexp
-
-var data [][]string = [][]string{}
+var data map[string]string = map[string]string{}
 
 func clear() {
 	c := exec.Command("clear")
@@ -32,21 +33,111 @@ func options() {
 
 	choice := ""
 	survey.AskOne(&survey.Select{
-		Message: "Please select an option",
+		Message: "Please select an option (Enter Q to quit)",
 		Options: []string{
 			"Get Password",
 			"Suggest Password",
-			"Save Password",
+			"Add Password",
+			"Change Name",
+			"Change Password",
 			"Quit",
 		},
 	}, &choice)
 
 	switch choice {
+	case "Get Password":
+		name := ""
+		
+		survey.AskOne(&survey.Select{
+			Message: "Name of Site",
+			Options: func () []string {
+				names := []string{}
+				names = append(names, "QUIT")
+
+				for name := range data {
+					if name != "secret" {
+						names = append(names, name)
+					}
+				}
+
+				return names
+			}(),
+
+		}, &name)
+
+		if name == "QUIT" {
+			break
+		}
+		fmt.Println(data[name])
+
 	case "Suggest Password":
 		suggest()
+
+	case "Add Password":
+		name := ""
+		newPassword := ""
+	
+		survey.AskOne(&survey.Input{
+			Message: "Name for New Site (Atleast 4 characters long)",
+		}, &name, survey.WithValidator(
+			func () survey.Validator {
+				return func (val interface{}) error {
+					newName := val.(string)
+
+					
+					if newName == "Q" {
+						return nil
+					}
+					
+					if len(newName) < 4 {
+						return fmt.Errorf("name should be atleast 4 characters long ლ(ಠ_ಠ ლ)")
+					}
+
+					_, ok := data[newName]
+
+					if !ok {
+						return nil
+					} else {
+						return fmt.Errorf("name already exists, please select a new one ლ(ಠ_ಠ ლ)")
+					}
+				}
+			}()))
+
+		if name == "Q" {
+			break
+		}
+
+		survey.AskOne(&survey.Password{
+			Message: "Enter Password for site (Enter Q to quit)",
+		}, &newPassword, survey.WithValidator(
+			func () survey.Validator {
+				return func (val interface{}) error {
+					pswd := val.(string)
+
+					if pswd == "Q" {
+						return nil
+					}
+
+					if len(pswd) < 8 {
+						return fmt.Errorf("a good password needs to be aleast 8 characters long |･д･)ﾉ")
+					}
+
+					// Didn't add password strength checker to allow password freedom
+					return nil
+				}
+			}()))
+
+		if newPassword == "Q" {
+			break
+		}
+
+		add(name, newPassword)
+
+
 	case "Quit":
 		quit()
 	}
+	fmt.Printf("\n\n")
 
 }
 
@@ -84,11 +175,16 @@ func suggest() {
 		password = randomPassword()
 	}
 
-	fmt.Println(password)
+	color.Green(password)
+}
+
+func add(name, password string) {
+
+	data[name] = password
+
 }
 
 func quit() {
-	fmt.Println("Hello")
 	os.Exit(0)
 }
 
@@ -129,7 +225,7 @@ func main() {
 	var attempts int = 0
 	if fileExists {
 		survey.AskOne(&survey.Password{
-			Message: "Please enter your secret code > ",
+			Message: "Please enter your secret code ",
 			Help: "Please enter your secret code that only you know to access the passwords and save/edit them",
 		}, &secret, survey.WithValidator(
 			func () survey.Validator {
@@ -139,7 +235,7 @@ func main() {
 					decoded, _ := Decrypt(fileStringContent[0], clientSecret)
 
 					if attempts <= attemptLimit && decoded == clientSecret {
-						data = append(data, strings.Split(decoded, ""))
+						data["secret"] = decoded
 						return nil
 					} else if attempts > attemptLimit {
 						return nil
@@ -152,7 +248,7 @@ func main() {
 			}()))
 	} else {
 		survey.AskOne(&survey.Password{
-			Message: "Please enter a secret code > ",
+			Message: "Please enter a secret code",
 			Help: "Please enter a secret code that only you know to access the passwords and save/edit them",
 		}, &secret, survey.WithValidator(
 			func () survey.Validator {
@@ -164,7 +260,7 @@ func main() {
 						return fmt.Errorf("length of secret code needs to be between 8-32 (っ˘̩╭╮˘̩)っ")
 					}
 
-					data = append(data, strings.Split(clientSecret, ""))
+					data["secret"] = clientSecret
 					return nil
 				}
 			}()))
@@ -176,6 +272,8 @@ func main() {
 		os.Exit(0)
 	}
 
-	options()
+	for {
+		options()
+	}
 
 }
