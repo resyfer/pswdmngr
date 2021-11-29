@@ -12,6 +12,7 @@ import (
 	"github.com/dlclark/regexp2" //Internal Go Regexp doesn't support backtracking in exchange for constant times
 
 	"github.com/AlecAivazis/survey/v2"
+	"github.com/AlecAivazis/survey/v2/terminal"
 	"github.com/fatih/color"
 )
 
@@ -69,23 +70,31 @@ func retrieve(fileBytes [][]byte) {
 func options() {
 
 	choice := ""
-	survey.AskOne(&survey.Select{
-		Message: "Please select an option (Enter Q to quit)",
+
+	err := survey.AskOne(&survey.Select{
+		Message: "Please select an option",
 		Options: []string{
+			"Quit",
 			"Get Password",
 			"Suggest Password",
 			"Add Password",
 			"Change Name",
 			"Change Password",
-			"Quit",
+			"Delete Password",
 		},
 	}, &choice)
+
+	if err != nil {
+		if err == terminal.InterruptErr {
+			log.Fatal("interrupted")
+		}
+	}
 
 	switch choice {
 	case "Get Password":
 		name := ""
 		
-		survey.AskOne(&survey.Select{
+		err := survey.AskOne(&survey.Select{
 			Message: "Name of Site",
 			Options: func () []string {
 				names := []string{}
@@ -102,6 +111,12 @@ func options() {
 
 		}, &name)
 
+		if err != nil {
+			if err == terminal.InterruptErr {
+				log.Fatal("interrupted")
+			}
+		}
+
 		if name == "QUIT" {
 			break
 		}
@@ -113,8 +128,9 @@ func options() {
 	case "Add Password":
 		name := ""
 		newPassword := ""
+		confirmPassword := " " //Different from newPassword
 	
-		survey.AskOne(&survey.Input{
+		err1 := survey.AskOne(&survey.Input{
 			Message: "Name for New Site (Atleast 4 characters long, Q to quit)",
 		}, &name, survey.WithValidator(
 			func () survey.Validator {
@@ -140,31 +156,70 @@ func options() {
 				}
 			}()))
 
+		if err1 != nil {
+			if err1 == terminal.InterruptErr {
+				log.Fatal("interrupted")
+			}
+		}
+
 		if name == "Q" {
 			break
 		}
 
-		survey.AskOne(&survey.Password{
-			Message: "Enter Password for site (Enter Q to quit)",
-		}, &newPassword, survey.WithValidator(
-			func () survey.Validator {
-				return func (val interface{}) error {
-					pswd := val.(string)
+		for newPassword != confirmPassword {
 
-					if pswd == "Q" {
+			if newPassword != "" {
+				color.Red("Passwords Don't Match. Please Try Again.")
+			}
+			
+			// New Password
+			err2 := survey.AskOne(&survey.Password{
+				Message: "Enter Password for site (Enter Q to quit)",
+			}, &newPassword, survey.WithValidator(
+				func () survey.Validator {
+					return func (val interface{}) error {
+						pswd := val.(string)
+	
+						if pswd == "Q" {
+							return nil
+						}
+	
+						if len(pswd) < 8 {
+							return fmt.Errorf("a good password needs to be aleast 8 characters long |･д･)ﾉ")
+						}
+	
+						// Didn't add password strength checker to allow password freedom
 						return nil
 					}
-
-					if len(pswd) < 8 {
-						return fmt.Errorf("a good password needs to be aleast 8 characters long |･д･)ﾉ")
-					}
-
-					// Didn't add password strength checker to allow password freedom
-					return nil
+				}()))
+	
+			if err2 != nil {
+				if err2 == terminal.InterruptErr {
+					log.Fatal("interrupted")
 				}
-			}()))
-
-		if newPassword == "Q" {
+			}
+	
+			if newPassword == "Q" {
+				break
+			}
+	
+			// Confirm Password
+			err3 := survey.AskOne(&survey.Password{
+				Message: "Confirm Password for site (Enter Q to quit)",
+			}, &confirmPassword)
+	
+			if err3 != nil {
+				if err3 == terminal.InterruptErr {
+					log.Fatal("interrupted")
+				}
+			}
+	
+			if confirmPassword == "Q" {
+				break
+			}
+		}
+	
+		if newPassword == "Q" || confirmPassword == "Q" {
 			break
 		}
 
@@ -174,9 +229,10 @@ func options() {
 
 		old := ""
 		new := ""
+		confirm := false
 
 		// Old Name question
-		survey.AskOne(&survey.Select{
+		err1 := survey.AskOne(&survey.Select{
 			Message: "Name of Site",
 			Options: func () []string {
 				names := []string{}
@@ -192,13 +248,19 @@ func options() {
 			}(),
 
 		}, &old)
+		
+		if err1 != nil {
+			if err1 == terminal.InterruptErr {
+				log.Fatal("interrupted")
+			}
+		}
 
 		if old == "QUIT" {
 			break
 		}
 
 		// New Name question
-		survey.AskOne(&survey.Input{
+		err2 := survey.AskOne(&survey.Input{
 			Message: "New Name for Site (Atleast 4 characters long, Q for quit)",
 		}, &new, survey.WithValidator(
 			func () survey.Validator {
@@ -223,19 +285,34 @@ func options() {
 					}
 				}
 			}()))
+			
+		if err2 != nil {
+			if err2 == terminal.InterruptErr {
+				log.Fatal("interrupted")
+			}
+		}
 
 		if new == "Q" {
+			break
+		}
+
+		survey.AskOne(&survey.Confirm{
+			Message: "Are you sure you want to delete it?",
+		}, &confirm)
+
+		if !confirm {
 			break
 		}
 		
 		changeName(old, new)
 
 	case "Change Password":
-		newPassword := ""
 		siteName := ""
+		newPassword := ""
+		confirmPassword := " " //Different from newPassword
 
 		// Old Name question
-		survey.AskOne(&survey.Select{
+		err1 := survey.AskOne(&survey.Select{
 			Message: "Name of Site",
 			Options: func () []string {
 				names := []string{}
@@ -251,37 +328,129 @@ func options() {
 			}(),
 
 		}, &siteName)
+		
+		if err1 != nil {
+			if err1 == terminal.InterruptErr {
+				log.Fatal("interrupted")
+			}
+		}
 
 		if siteName == "QUIT" {
 			break
 		}
 
-		//New Password
-		survey.AskOne(&survey.Password{
-			Message: "Enter Password for site (Enter Q to quit)",
-		}, &newPassword, survey.WithValidator(
-			func () survey.Validator {
-				return func (val interface{}) error {
-					pswd := val.(string)
+		for newPassword != confirmPassword {
 
-					if pswd == "Q" {
+			//New Password
+			err2 := survey.AskOne(&survey.Password{
+				Message: "Enter Password for site (Enter Q to quit)",
+			}, &newPassword, survey.WithValidator(
+				func () survey.Validator {
+					return func (val interface{}) error {
+						pswd := val.(string)
+	
+						if pswd == "Q" {
+							return nil
+						}
+	
+						if len(pswd) < 8 {
+							return fmt.Errorf("a good password needs to be aleast 8 characters long |･д･)ﾉ")
+						}
+	
+						// Didn't add password strength checker to allow password freedom
 						return nil
 					}
-
-					if len(pswd) < 8 {
-						return fmt.Errorf("a good password needs to be aleast 8 characters long |･д･)ﾉ")
-					}
-
-					// Didn't add password strength checker to allow password freedom
-					return nil
+				}()))
+				
+			if err2 != nil {
+				if err2 == terminal.InterruptErr {
+					log.Fatal("interrupted")
 				}
-			}()))
-
-		if newPassword == "Q" {
+			}
+	
+			if newPassword == "Q" {
+				break
+			}
+			
+			//Confirm Password
+			err3 := survey.AskOne(&survey.Password{
+				Message: "Enter Password for site (Enter Q to quit)",
+			}, &confirmPassword, survey.WithValidator(
+				func () survey.Validator {
+					return func (val interface{}) error {
+						pswd := val.(string)
+	
+						if pswd == "Q" {
+							return nil
+						}
+	
+						if len(pswd) < 8 {
+							return fmt.Errorf("a good password needs to be aleast 8 characters long |･д･)ﾉ")
+						}
+	
+						// Didn't add password strength checker to allow password freedom
+						return nil
+					}
+				}()))
+				
+			if err3 != nil {
+				if err3 == terminal.InterruptErr {
+					log.Fatal("interrupted")
+				}
+			}
+	
+			if confirmPassword == "Q" {
+				break
+			}
+		}
+	
+		if newPassword == "Q" || confirmPassword == "Q" {
 			break
 		}
 
 		changePassword(siteName, newPassword)
+
+	case "Delete Password":
+		site := ""
+		confirm := false
+
+		// Old Name question
+		err := survey.AskOne(&survey.Select{
+			Message: "Name of Site",
+			Options: func () []string {
+				names := []string{}
+				names = append(names, "QUIT")
+
+				for name := range data {
+					if name != "secret" {
+						names = append(names, name)
+					}
+				}
+
+				return names
+			}(),
+
+		}, &site)
+		
+		if err != nil {
+			if err == terminal.InterruptErr {
+				log.Fatal("interrupted")
+			}
+		}
+
+		if site == "QUIT" {
+			break
+		}
+
+		survey.AskOne(&survey.Confirm{
+			Message: "Are you sure you want to delete it?",
+		}, &confirm)
+
+		if !confirm {
+			break
+		}
+
+		delete(data, site)
 
 	case "Quit":
 		save()
@@ -300,7 +469,7 @@ func randomPassword() string {
 
 	length := 0
 
-	for length < 8 {
+	for length < 12 {
 		length = rand.Intn(32)
 	}
 
@@ -363,10 +532,10 @@ func main() {
 	fmt.Printf("\n\n")
 
 	// Checking file or Creating it
-	var fileExists bool = true
+	var fileEmpty bool = true
 	_, errStat := os.Stat("password.txt")
 	if errStat != nil {
-		fileExists = false
+		fileEmpty = false
 		file, errCreate := os.Create("password.txt")
 
 		if errCreate != nil {
@@ -377,15 +546,20 @@ func main() {
 
 	// Secret Code if it exists
 	fileByteContent, _ := os.ReadFile(FILE_NAME)
+	if len(fileByteContent) == 0 {
+		fileEmpty = false
+	}
+
 	fileByteArray := bytes.Split(fileByteContent, []byte("\n"))
 	
 	// Getting Secret Code and if present, verifying it
 	var attemptLimit int = 5
 	var attempts int = 0
 
-	//TODO: Stop program on keyboard interrupts
-	if fileExists {
-		survey.AskOne(&survey.Password{
+	if fileEmpty {
+
+
+		err := survey.AskOne(&survey.Password{
 			Message: "Please enter your secret code ",
 			Help: "Please enter your secret code that only you know to access the passwords and save/edit them",
 		}, &secret, survey.WithValidator(
@@ -408,26 +582,62 @@ func main() {
 				}
 			}()))
 
-			retrieve(fileByteArray)
-	} else {
-		survey.AskOne(&survey.Password{
-			Message: "Please enter a secret code",
-			Help: "Please enter a secret code that only you know to access the passwords and save/edit them",
-		}, &secret, survey.WithValidator(
-			func () survey.Validator {
-				return func (val interface{}) error {
-					
-					clientSecret, _ := val.(string)
-
-					if len(clientSecret) < 8 && len(clientSecret) > 32 {
-						return fmt.Errorf("length of secret code needs to be between 8-32 (っ˘̩╭╮˘̩)っ")
-					}
-
-					data["secret"] = clientSecret
-					return nil
+			if err != nil {
+				if err == terminal.InterruptErr {
+					log.Fatal("interrupted")
 				}
-			}()))
-		fmt.Println("Please remember this secret code ⊂(￣▽￣)⊃")
+			}
+
+			retrieve(fileByteArray)
+
+
+	} else {
+
+		confirmSecret := " " //Different from Secret
+
+		for secret != confirmSecret {
+
+			if secret != "" {
+				color.Red("Passwords don't match. Please try again.")
+			}
+
+			err1 := survey.AskOne(&survey.Password{
+				Message: "Please enter a secret code",
+				Help: "Please enter a secret code that only you know to access the passwords and save/edit them",
+			}, &secret, survey.WithValidator(
+				func () survey.Validator {
+					return func (val interface{}) error {
+						
+						clientSecret, _ := val.(string)
+	
+						if len(clientSecret) < 8 && len(clientSecret) > 32 {
+							return fmt.Errorf("length of secret code needs to be between 8-32 (っ˘̩╭╮˘̩)っ")
+						}
+	
+						data["secret"] = clientSecret
+						return nil
+					}
+				}()))
+	
+			if err1 != nil {
+				if err1 == terminal.InterruptErr {
+					log.Fatal("interrupted")
+				}
+			}
+
+			err2 := survey.AskOne(&survey.Password{
+				Message: "Please confirm your secret code",
+				Help: "Please confirm your secret code that only you know to access the passwords and save/edit them",
+			}, &confirmSecret)
+	
+			if err2 != nil {
+				if err2 == terminal.InterruptErr {
+					log.Fatal("interrupted")
+				}
+			}
+		}
+		
+		color.Green("\nPlease remember this secret code ⊂(￣▽￣)⊃\n")
 	}
 
 	// Stop for too many attempts
