@@ -3,14 +3,24 @@ package main
 import (
 	"fmt"
 	"log"
+	"math/rand"
 	"os"
 	"os/exec"
 	"strings"
+	"time"
+
+	"github.com/dlclark/regexp2" //Internal Go Regex doesn't support backtracking in exchange for constant times
 
 	"github.com/AlecAivazis/survey/v2"
+	"github.com/fatih/color"
 )
 
 var VERSION string = "1.0.0"
+var FILE_NAME string = "password.txt"
+
+var ValidPassword *regexp2.Regexp
+
+var data [][]string = [][]string{}
 
 func clear() {
 	c := exec.Command("clear")
@@ -18,11 +28,81 @@ func clear() {
 	c.Run()
 }
 
+func options() {
+
+	choice := ""
+	survey.AskOne(&survey.Select{
+		Message: "Please select an option",
+		Options: []string{
+			"Get Password",
+			"Suggest Password",
+			"Save Password",
+			"Quit",
+		},
+	}, &choice)
+
+	switch choice {
+	case "Suggest Password":
+		suggest()
+	case "Quit":
+		quit()
+	}
+
+}
+
+func passwordStrengthChecker(password string) bool {
+	match, _ := ValidPassword.MatchString(password)
+	return match
+}
+
+func randomPassword() string {
+
+	length := 0
+
+	for length < 8 {
+		length = rand.Intn(32)
+	}
+
+	password := ""
+	for i:=0; i<length; i++ {
+
+		ascii := 0
+		for ascii < 33 {
+			ascii = rand.Intn(126)
+		}
+
+		password += string(rune(ascii))
+	}
+
+	return password
+}
+
+func suggest() {
+	password := ""
+
+	for !passwordStrengthChecker(password) {
+		password = randomPassword()
+	}
+
+	fmt.Println(password)
+}
+
+func quit() {
+	fmt.Println("Hello")
+	os.Exit(0)
+}
+
 func main() {
+	// Compiling RegEx for Password Checker
+	ValidPassword = regexp2.MustCompile(`^(?=.*[0-9])(?=.*[!"#$%&'()*+,-./:;<=>?@[\]^_{|}~])[a-zA-Z0-9!"#$%&'()*+,-./:;<=>?@[\]^_{|}~]{8,100}$`, 0)
+
+	rand.Seed(time.Now().UnixNano())
 
 	// Intro
 	clear()
-	fmt.Printf("Welcome to Resyfer's Password Manager v%v\n", VERSION)
+	color.Yellow("Welcome to Resyfer's Password Manager v%v\n", VERSION)
+	color.Red("NOTE: Only use the Quit option to exit the program, or changes won't be saved")
+	fmt.Printf("\n\n")
 
 	// Checking file or Creating it
 	var fileExists bool = true
@@ -38,9 +118,9 @@ func main() {
 	}
 
 	// Secret Code if it exists
-	fileByteContent, _ := os.ReadFile("password.txt")
+	fileByteContent, _ := os.ReadFile(FILE_NAME)
 	fileStringContent := strings.Split(string(fileByteContent), "\n")
-
+	
 	// Secret
 	var secret string = ""
 	
@@ -59,6 +139,7 @@ func main() {
 					decoded, _ := Decrypt(fileStringContent[0], clientSecret)
 
 					if attempts <= attemptLimit && decoded == clientSecret {
+						data = append(data, strings.Split(decoded, ""))
 						return nil
 					} else if attempts > attemptLimit {
 						return nil
@@ -82,16 +163,19 @@ func main() {
 					if len(clientSecret) < 8 && len(clientSecret) > 32 {
 						return fmt.Errorf("length of secret code needs to be between 8-32 (っ˘̩╭╮˘̩)っ")
 					}
+
+					data = append(data, strings.Split(clientSecret, ""))
 					return nil
 				}
 			}()))
-		clear()
 		fmt.Println("Please remember this secret code ⊂(￣▽￣)⊃")
 	}
-
+	// Stop for too many attempts
 	if attempts > attemptLimit {
 		fmt.Println("Too many tries mate, we know you ain't the Chosen One ヽ( `д´*)ノ")
 		os.Exit(0)
 	}
+
+	options()
 
 }

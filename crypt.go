@@ -33,7 +33,8 @@ func trimIndex(text []byte) int {
 }
 
 
-//Encrypt(String, Key) gives the gibberish string and an error
+// Encrypt(String, Key) gives the gibberish string and an error.
+// Make sure Key is smaller than 32 bytes (len(Key) <= 32)
 func Encrypt(payload, secret string) (cipherString string, err error) {
 	var key [32]byte;
 	copy(key[:], []byte(secret))
@@ -57,7 +58,8 @@ func Encrypt(payload, secret string) (cipherString string, err error) {
 	return string(text[:trimIndex(text)]), nil
 }
 
-// Decrypt(gibberishString, key) gives back original string and error
+// Decrypt(encryptedString, key) gives back original string and error.
+// Make sure Key is smaller than 32 bytes (len(Key) <= 32)
 func Decrypt(cipherString, secret string) (payload string , err error) {
 	var key [32]byte;
 	copy(key[:], []byte(secret))
